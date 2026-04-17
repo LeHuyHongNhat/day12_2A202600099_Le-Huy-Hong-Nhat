@@ -487,17 +487,26 @@ Test:
 
 ```bash
 python app.py
-
+```
 #  Không có key
+```
 curl http://localhost:8000/ask -X POST \
   -H "Content-Type: application/json" \
   -d '{"question": "Hello"}'
-
+```
+```
+{"detail":"Missing API key. Include header: X-API-Key: <your-key>"}%         
+```
+```
 #  Có key
 curl http://localhost:8000/ask -X POST \
   -H "X-API-Key: secret-key-123" \
   -H "Content-Type: application/json" \
   -d '{"question": "Hello"}'
+```
+
+```
+{"detail":"Invalid API key."}%  
 ```
 
 ### Exercise 4.2: JWT authentication (Advanced)
@@ -529,13 +538,31 @@ curl http://localhost:8000/ask -X POST \
   -d '{"question": "Explain JWT"}'
 ```
 
+```
+(base) lehuyhongnhat@MacBook-Pro-cua-Le Day12 % curl http://localhost:8000/auth/token -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"username": "student", "password": "demo123"}'
+
+{"access_token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdHVkZW50Iiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NzY0MTk5NjEsImV4cCI6MTc3NjQyMzU2MX0.jVtlGaR76cDNi27ponGp1bytwCpblAYpur4lEGIhLFk","token_type":"bearer","expires_in_minutes":60,"hint":"Include in header: Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."}%                            
+(base) lehuyhongnhat@MacBook-Pro-cua-Le Day12 % TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdHVkZW50Iiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NzY0MTk5NjEsImV4cCI6MTc3NjQyMzU2MX0.jVtlGaR76cDNi27ponGp1bytwCpblAYpur4lEGIhLFk" 
+curl http://localhost:8000/ask -X POST \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Explain JWT"}'
+{"question":"Explain JWT","answer":"Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã được nhận.","usage":{"requests_remaining":9,"budget_remaining_usd":1.9e-05}}% 
+```
+
 ### Exercise 4.3: Rate limiting
 
 **Nhiệm vụ:** Đọc `rate_limiter.py` và trả lời:
 
-- Algorithm nào được dùng? (Token bucket? Sliding window?)
-- Limit là bao nhiêu requests/minute?
-- Làm sao bypass limit cho admin?
+- **Algorithm nào được dùng? (Token bucket? Sliding window?)**
+    - Thuật toán **Sliding Window Counter** (dòng 7). Nó sử dụng một `deque` để lưu trữ timestamp của các request và liên tục loại bỏ các timestamp nằm ngoài cửa sổ thời gian (window).
+- **Limit là bao nhiêu requests/minute?**
+    - Đối với **User thường**: 10 requests/phút.
+    - Đối với **Admin**: 100 requests/phút.
+- **Làm sao bypass limit cho admin?**
+    - Admin không bypass hoàn toàn nhưng được gán một bộ giới hạn riêng (`rate_limiter_admin`) với ngưỡng cao hơn gấp 10 lần. Trong `app.py`, hệ thống kiểm tra `role` từ JWT token để quyết định sử dụng bộ gác cổng nào (`limiter = rate_limiter_admin if role == "admin" else rate_limiter_user`).
 
 Test:
 
@@ -548,6 +575,29 @@ for i in {1..20}; do
     -d '{"question": "Test '$i'"}'
   echo ""
 done
+```
+
+```
+{"question":"Test 1","answer":"Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã được nhận.","usage":{"requests_remaining":9,"budget_remaining_usd":3.7e-05}}
+{"question":"Test 2","answer":"Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã được nhận.","usage":{"requests_remaining":8,"budget_remaining_usd":5.6e-05}}
+{"question":"Test 3","answer":"Agent đang hoạt động tốt! (mock response) Hỏi thêm câu hỏi đi nhé.","usage":{"requests_remaining":7,"budget_remaining_usd":7.2e-05}}
+{"question":"Test 4","answer":"Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã được nhận.","usage":{"requests_remaining":6,"budget_remaining_usd":9.1e-05}}
+{"question":"Test 5","answer":"Agent đang hoạt động tốt! (mock response) Hỏi thêm câu hỏi đi nhé.","usage":{"requests_remaining":5,"budget_remaining_usd":0.000107}}
+{"question":"Test 6","answer":"Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã được nhận.","usage":{"requests_remaining":4,"budget_remaining_usd":0.000125}}
+{"question":"Test 7","answer":"Agent đang hoạt động tốt! (mock response) Hỏi thêm câu hỏi đi nhé.","usage":{"requests_remaining":3,"budget_remaining_usd":0.000142}}
+{"question":"Test 8","answer":"Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã được nhận.","usage":{"requests_remaining":2,"budget_remaining_usd":0.00016}}
+{"question":"Test 9","answer":"Agent đang hoạt động tốt! (mock response) Hỏi thêm câu hỏi đi nhé.","usage":{"requests_remaining":1,"budget_remaining_usd":0.000176}}
+{"question":"Test 10","answer":"Đây là câu trả lời từ AI agent (mock). Trong production, đây sẽ là response từ OpenAI/Anthropic.","usage":{"requests_remaining":0,"budget_remaining_usd":0.000197}}
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
 ```
 
 Quan sát response khi hit limit.
