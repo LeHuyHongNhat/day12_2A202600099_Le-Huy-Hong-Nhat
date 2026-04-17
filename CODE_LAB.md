@@ -422,7 +422,18 @@ cd ../render
 6. Set environment variables trong dashboard
 7. Deploy!
 
+**Result**
+```
+https://ai-agent-mmfe.onrender.com
+```
+
 **Nhiệm vụ:** So sánh `render.yaml` với `railway.toml`. Khác nhau gì?
+
+**Trả lời:**
+*   **Phạm vi (Scope):** `render.yaml` là Infrastructure as Code (Blueprint), có thể định nghĩa toàn bộ hạ tầng (nhiều Web services, Redis, Database) và quản lý biến môi trường trong một file. `railway.toml` chủ yếu tập trung vào cấu hình Build/Deploy cho một service đơn lẻ.
+*   **Định nghĩa Biến môi trường:** `render.yaml` cho phép khai báo và tự động tạo (generate) secrets/keys ngay trong file. Railway thường đặt biến qua Dashboard/CLI.
+*   **Định dạng:** YAML (Render) vs TOML (Railway).
+*   **Độ phức tạp:** Render Blueprint mạnh mẽ hơn cho hệ thống phức tạp; Railway TOML đơn giản, gọn nhẹ cho việc deploy nhanh.
 
 ### Exercise 3.3: (Optional) GCP Cloud Run (15 phút)
 
