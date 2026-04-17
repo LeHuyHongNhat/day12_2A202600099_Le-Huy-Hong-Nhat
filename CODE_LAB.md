@@ -616,8 +616,20 @@ def check_budget(user_id: str, estimated_cost: float) -> bool:
     - Track spending trong Redis
     - Reset đầu tháng
     """
-    # TODO: Implement
-    pass
+    month_key = datetime.now().strftime("%Y-%m")
+    key = f"budget:{user_id}:{month_key}"
+    
+    # Lấy số tiền đã dùng từ Redis (mặc định là 0 nếu chưa có)
+    current_spending = float(r.get(key) or 0)
+    
+    if current_spending + estimated_cost > 10.0:
+        return False  # Vượt budget $10/tháng
+    
+    # Cập nhật spending và set expire (ví dụ 32 ngày để bao phủ hết tháng)
+    r.incrbyfloat(key, estimated_cost)
+    r.expire(key, 32 * 24 * 3600)
+    
+    return True
 ```
 
 Solution
