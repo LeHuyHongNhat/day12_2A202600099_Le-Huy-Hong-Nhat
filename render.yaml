@@ -2,7 +2,7 @@ services:
   - type: web
     name: ai-agent
     runtime: python
-    rootDirectory: 03-cloud-deployment/railway
+    rootDirectory: 03-cloud-deployment/render
     region: singapore
     plan: free
     buildCommand: pip install -r requirements.txt
