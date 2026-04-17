@@ -4,7 +4,6 @@
 # Docs: https://render.com/docs/blueprint-spec
 # Commit file này vào git → Render tự sync infrastructure.
 # ============================================================
-
 services:
   # ──────────────────────────────────────
   # Web Service — AI Agent
@@ -14,14 +13,10 @@ services:
     runtime: python
     region: singapore         # Chọn region gần user nhất
     plan: free                # free | starter | standard | pro
-
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
-
     healthCheckPath: /health   # Render check path này
-
     autoDeploy: true           # Auto deploy khi push to GitHub
-
     envVars:
       - key: ENVIRONMENT
         value: production
@@ -32,7 +27,6 @@ services:
         sync: false            # sync: false = set thủ công trên dashboard
       - key: AGENT_API_KEY
         generateValue: true    # Render tự sinh random value
-
     # Disk (nếu agent cần lưu file)
     # disk:
     #   name: agent-data
@@ -46,6 +40,9 @@ services:
     name: agent-cache
     plan: free
     maxmemoryPolicy: allkeys-lru
+    ipAllowList:              # Required by Render Blueprint spec
+      - source: 0.0.0.0/0    # Allow all IPs — restrict this in production
+        description: everywhere
 
 # ============================================================
 # Cách deploy:
