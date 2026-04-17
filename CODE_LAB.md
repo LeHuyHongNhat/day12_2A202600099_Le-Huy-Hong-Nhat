@@ -1,11 +1,12 @@
-#  Code Lab: Deploy Your AI Agent to Production
+# Code Lab: Deploy Your AI Agent to Production
 
 > **AICB-P1 · VinUniversity 2026**  
 > Thời gian: 3-4 giờ | Độ khó: Intermediate
 
-##  Mục Tiêu
+## Mục Tiêu
 
 Sau khi hoàn thành lab này, bạn sẽ:
+
 - Hiểu sự khác biệt giữa development và production
 - Containerize một AI agent với Docker
 - Deploy agent lên cloud platform
@@ -14,7 +15,7 @@ Sau khi hoàn thành lab này, bạn sẽ:
 
 ---
 
-##  Yêu Cầu
+## Yêu Cầu
 
 ```bash
  Python 3.11+
@@ -25,32 +26,36 @@ Sau khi hoàn thành lab này, bạn sẽ:
 ```
 
 **Không cần:**
--  OpenAI API key (dùng mock LLM)
--  Credit card
--  Kinh nghiệm DevOps trước đó
+
+- OpenAI API key (dùng mock LLM)
+- Credit card
+- Kinh nghiệm DevOps trước đó
 
 ---
 
-##  Lộ Trình Lab
+## Lộ Trình Lab
 
-| Phần | Thời gian | Nội dung |
-|------|-----------|----------|
-| **Part 1** | 30 phút | Localhost vs Production |
-| **Part 2** | 45 phút | Docker Containerization |
-| **Part 3** | 45 phút | Cloud Deployment |
-| **Part 4** | 40 phút | API Security |
-| **Part 5** | 40 phút | Scaling & Reliability |
-| **Part 6** | 60 phút | Final Project |
+
+| Phần       | Thời gian | Nội dung                |
+| ---------- | --------- | ----------------------- |
+| **Part 1** | 30 phút   | Localhost vs Production |
+| **Part 2** | 45 phút   | Docker Containerization |
+| **Part 3** | 45 phút   | Cloud Deployment        |
+| **Part 4** | 40 phút   | API Security            |
+| **Part 5** | 40 phút   | Scaling & Reliability   |
+| **Part 6** | 60 phút   | Final Project           |
+
 
 ---
 
 ## Part 1: Localhost vs Production (30 phút)
 
-###  Concepts
+### Concepts
 
 **Vấn đề:** "It works on my machine" — code chạy tốt trên laptop nhưng fail khi deploy.
 
 **Nguyên nhân:**
+
 - Hardcoded secrets
 - Khác biệt về environment (Python version, OS, dependencies)
 - Không có health checks
@@ -58,7 +63,7 @@ Sau khi hoàn thành lab này, bạn sẽ:
 
 **Giải pháp:** 12-Factor App principles
 
-###  Exercise 1.1: Phát hiện anti-patterns
+### Exercise 1.1: Phát hiện anti-patterns
 
 ```bash
 cd 01-localhost-vs-production/develop
@@ -66,19 +71,29 @@ cd 01-localhost-vs-production/develop
 
 **Nhiệm vụ:** Đọc `app.py` và tìm ít nhất 5 vấn đề.
 
-<details>
-<summary> Gợi ý</summary>
+**Các vấn đề tìm được:**
+
+- Hardcoded secrets (`OPENAI_API_KEY`, `DATABASE_URL`) dễ lộ khi commit.
+- `DEBUG=True` và `reload=True` không phù hợp production.
+- Log bằng `print()` và còn log cả secret.
+- Không có `/health` endpoint cho platform health checks.
+- Host bị cố định `localhost` (container/cloud không truy cập được).
+- Port bị hardcode `8000` thay vì đọc từ env `PORT`.
+- Thiếu lifecycle startup/shutdown rõ ràng (graceful shutdown chưa đầy đủ).
+
+Gợi ý
 
 Tìm:
+
 - API key hardcode
 - Port cố định
 - Debug mode
 - Không có health check
 - Không xử lý shutdown
 
-</details>
 
-###  Exercise 1.2: Chạy basic version
+
+### Exercise 1.2: Chạy basic version
 
 ```bash
 pip install -r requirements.txt
@@ -86,6 +101,7 @@ python app.py
 ```
 
 Test:
+
 ```bash
 curl http://localhost:8000/ask -X POST \
   -H "Content-Type: application/json" \
@@ -94,7 +110,7 @@ curl http://localhost:8000/ask -X POST \
 
 **Quan sát:** Nó chạy! Nhưng có production-ready không?
 
-###  Exercise 1.3: So sánh với advanced version
+### Exercise 1.3: So sánh với advanced version
 
 ```bash
 cd ../production
@@ -105,37 +121,40 @@ python app.py
 
 **Nhiệm vụ:** So sánh 2 files `app.py`. Điền vào bảng:
 
-| Feature | Basic | Advanced | Tại sao quan trọng? |
-|---------|-------|----------|---------------------|
-| Config | Hardcode | Env vars | ... |
-| Health check |  |  | ... |
-| Logging | print() | JSON | ... |
-| Shutdown | Đột ngột | Graceful | ... |
 
-###  Checkpoint 1
+| Feature      | Basic                 | Advanced                              | Tại sao quan trọng?                                                |
+| ------------ | --------------------- | ------------------------------------- | ------------------------------------------------------------------ |
+| Config       | Hardcode              | Env vars                              | Tách code/config, đổi theo môi trường an toàn và linh hoạt         |
+| Health check | Không có              | `/health` + `/ready`                  | Platform biết app sống/sẵn sàng để restart hoặc route traffic đúng |
+| Logging      | `print()` (lộ secret) | Structured JSON logging               | Dễ theo dõi, parse, alert; tránh lộ thông tin nhạy cảm             |
+| Shutdown     | Đột ngột              | Graceful lifecycle + SIGTERM handling | Giảm mất request, tránh corrupt state khi deploy/scale down        |
 
-- [ ] Hiểu tại sao hardcode secrets là nguy hiểm
-- [ ] Biết cách dùng environment variables
-- [ ] Hiểu vai trò của health check endpoint
-- [ ] Biết graceful shutdown là gì
+
+### Checkpoint 1
+
+- Hiểu tại sao hardcode secrets là nguy hiểm
+- Biết cách dùng environment variables
+- Hiểu vai trò của health check endpoint
+- Biết graceful shutdown là gì
 
 ---
 
 ## Part 2: Docker Containerization (45 phút)
 
-###  Concepts
+### Concepts
 
 **Vấn đề:** "Works on my machine" part 2 — Python version khác, dependencies conflict.
 
 **Giải pháp:** Docker — đóng gói app + dependencies vào container.
 
 **Benefits:**
+
 - Consistent environment
 - Dễ deploy
 - Isolation
 - Reproducible builds
 
-###  Exercise 2.1: Dockerfile cơ bản
+### Exercise 2.1: Dockerfile cơ bản
 
 ```bash
 cd ../../02-docker/develop
@@ -148,7 +167,18 @@ cd ../../02-docker/develop
 3. Tại sao COPY requirements.txt trước?
 4. CMD vs ENTRYPOINT khác nhau thế nào?
 
-###  Exercise 2.2: Build và run
+**Đáp án ngắn:**
+
+1. Base image: `python:3.11`.
+  - **Ý nghĩa:** Cung cấp sẵn Python runtime + system libs để app chạy nhất quán giữa máy local/CI/server, giảm lỗi "khác môi trường".
+2. Working directory: `/app` (`WORKDIR /app`).
+  - **Ý nghĩa:** Chuẩn hóa thư mục làm việc cho mọi lệnh sau (`COPY`, `RUN`, `CMD`), giúp path rõ ràng và code dễ bảo trì.
+3. Copy `requirements.txt` trước để tận dụng Docker layer cache: nếu dependencies không đổi thì không cần `pip install` lại, build nhanh hơn.
+  - **Ý nghĩa:** Giảm thời gian build, giảm băng thông tải package, tăng tốc vòng lặp dev/test và CI.
+4. `CMD` là lệnh mặc định (dễ override khi `docker run ... <cmd>`), còn `ENTRYPOINT` là executable chính của container (thường khó override hơn, phù hợp khi muốn container luôn chạy một chương trình cố định).
+  - **Ý nghĩa thực tế:** Dùng `CMD` khi muốn linh hoạt thay lệnh chạy; dùng `ENTRYPOINT` khi muốn "khóa" behavior chính của image như một executable chuyên dụng.
+
+### Exercise 2.2: Build và run
 
 ```bash
 # Build image
@@ -164,38 +194,108 @@ curl http://localhost:8000/ask -X POST \
 ```
 
 **Quan sát:** Image size là bao nhiêu?
+
 ```bash
 docker images my-agent:develop
 ```
 
-###  Exercise 2.3: Multi-stage build
+### Exercise 2.3: Multi-stage build
 
 ```bash
 cd ../production
 ```
 
 **Nhiệm vụ:** Đọc `Dockerfile` và tìm:
+
 - Stage 1 làm gì?
 - Stage 2 làm gì?
 - Tại sao image nhỏ hơn?
 
+**Trả lời đầy đủ:**
+
+- **Stage 1 (builder):** Cài build tools (`gcc`, `libpq-dev`), cài Python dependencies từ `requirements.txt` bằng `pip --user`, tạo artifact packages để dùng cho runtime.
+- **Stage 2 (runtime):** Tạo image chạy thật: chỉ copy packages đã cài từ builder + source code cần thiết (`main.py`, `utils/`), chạy bằng non-root user `appuser`, cấu hình `HEALTHCHECK`, start bằng `uvicorn`.
+- **Vì sao image nhỏ hơn:** Không mang theo build tools/cache/file tạm của stage build vào image cuối; image cuối chỉ chứa runtime tối thiểu + app cần chạy, nên nhẹ hơn, ít bề mặt tấn công hơn, pull/deploy nhanh hơn.
+
 Build và so sánh:
+
 ```bash
 docker build -t my-agent:advanced .
 docker images | grep my-agent
 ```
 
-###  Exercise 2.4: Docker Compose stack
+```
+Results:
+WARNING: This output is designed for human readability. For machine-readable output, please use --format.
+my-agent:advanced   2240cab2c052        262MB         56.7MB        
+my-agent:develop    dab81c57330e       1.67GB          413MB   U    
+```
+
+### Exercise 2.4: Docker Compose stack
 
 **Nhiệm vụ:** Đọc `docker-compose.yml` và vẽ architecture diagram.
+
+**Sơ đồ kiến trúc (tóm tắt luồng):**
+
+```mermaid
+flowchart LR
+  Client["Client / curl / browser"]
+  Nginx["nginx :80/:443"]
+  Agent["agent FastAPI :8000"]
+  Redis["redis :6379"]
+  Qdrant["qdrant :6333"]
+
+  Client -->|"HTTP"| Nginx
+  Nginx -->|"proxy_pass"| Agent
+  Agent -->|"REDIS_URL redis://redis:6379/0"| Redis
+  Agent -->|"QDRANT_URL http://qdrant:6333"| Qdrant
+```
+
+
+
+**Trả lời chi tiết — Services nào được start? Chúng communicate thế nào?**
+
+**1) Các service được khởi động (theo `docker-compose.yml`)**
+
+
+| Service    | Vai trò                              | Image / build                             | Port ra host                      | Volume                         |
+| ---------- | ------------------------------------ | ----------------------------------------- | --------------------------------- | ------------------------------ |
+| **nginx**  | Reverse proxy, TLS (443), rate limit | `nginx:alpine`                            | `80`, `443`                       | Mount `nginx.conf` (read-only) |
+| **agent**  | API FastAPI (uvicorn), mock LLM      | Build từ `./Dockerfile`, target `runtime` | Không publish (chỉ trong network) | —                              |
+| **redis**  | Cache / session / rate limit backend | `redis:7-alpine`                          | Không publish                     | `redis_data` → `/data`         |
+| **qdrant** | Vector DB (RAG)                      | `qdrant/qdrant:v1.9.0`                    | Không publish                     | `qdrant_data` → storage        |
+
+
+Tất cả service dùng chung network `**internal`** (driver `bridge`), nên các container gọi nhau bằng **tên DNS** trùng tên service (`nginx`, `agent`, `redis`, `qdrant`).
+
+**2) Thứ tự và điều kiện khởi động**
+
+- **redis** và **qdrant** có `healthcheck`; khi healthy thì mới coi là “sẵn sàng”.
+- **agent** có `depends_on` với `condition: service_healthy` cho **redis** và **qdrant** → Compose đợi Redis và Qdrant pass healthcheck trước khi coi dependency thỏa (tránh agent start sớm rồi crash khi kết nối DB/cache).
+- **nginx** `depends_on: agent` → Nginx start sau agent (luồng HTTP vẫn qua Nginx; nếu agent chưa sẵn sàng, proxy có thể trả 502 tạm thời cho đến khi agent healthy).
+
+**3) Luồng giao tiếp (chi tiết)**
+
+- **Client → nginx:** Chỉ **nginx** mở port ra máy bạn (`80` HTTP, `443` HTTPS). Đây là điểm vào duy nhất từ bên ngoài stack trong cấu hình này.
+- **nginx → agent:** Trong `nginx.conf`, `upstream agent_backend` trỏ tới `**agent:8000`**. Mọi request tới `/` được `proxy_pass` tới upstream đó; có **rate limiting** (ví dụ 10 req/s per IP, burst). `**/health`** được proxy riêng tới `agent_backend/health` và tắt access log để giảm noise.
+- **agent → redis:** Biến `**REDIS_URL=redis://redis:6379/0`**: hostname `**redis**` là tên service trong Compose, port **6379** là port mặc định của Redis trong container. Agent dùng URL này nếu code đọc env (session/cache/rate limit phía ứng dụng).
+- **agent → qdrant:** Biến `**QDRANT_URL=http://qdrant:6333`**: hostname `**qdrant**`, HTTP API thường ở **6333** (theo image Qdrant).
+- **agent:** Có `env_file: .env.local` và thêm biến trong `environment:`; **không publish** port `8000` ra host — traffic vào agent chủ yếu qua **nginx** trong production pattern này.
+
+**4) Healthcheck và restart**
+
+- **agent:** healthcheck gọi `http://localhost:8000/health` **bên trong container** (đúng với app lắng nghe 8000 nội bộ).
+- **redis:** `redis-cli ping`.
+- **qdrant:** `curl` tới `http://localhost:6333/health` trong container.
+- **nginx:** không khai báo healthcheck trong compose (tùy môi trường có thể bổ sung sau).
+- **restart: unless-stopped** trên agent và nginx giúp tự đứng lại sau lỗi (trừ khi user stop thủ công).
 
 ```bash
 docker compose up
 ```
 
-Services nào được start? Chúng communicate thế nào?
-
 Test:
+
 ```bash
 # Health check
 curl http://localhost/health
@@ -206,18 +306,39 @@ curl http://localhost/ask -X POST \
   -d '{"question": "Explain microservices"}'
 ```
 
-###  Checkpoint 2
+**Result**:
 
-- [ ] Hiểu cấu trúc Dockerfile
-- [ ] Biết lợi ích của multi-stage builds
-- [ ] Hiểu Docker Compose orchestration
-- [ ] Biết cách debug container (`docker logs`, `docker exec`)
+```
+(aithucchien) lehuyhongnhat@MacBook-Pro-cua-Le production % docker compose up
+[+] up 4/4
+ ✔ Container production-qdrant-1 Running                                                              0.0s
+ ✔ Container production-redis-1  Running                                                              0.0s
+ ✔ Container production-agent-1  Running                                                              0.0s
+ ✔ Container production-nginx-1  Running                                                              0.0s
+Attaching to agent-1, nginx-1, qdrant-1, redis-1
+Container production-redis-1 Waiting 
+Container production-redis-1 Healthy 
+
+agent-1  | INFO:     127.0.0.1:37934 - "GET /health HTTP/1.1" 200 OK
+
+agent-1  | {"time":"2026-04-17 08:54:05,530","level":"INFO","msg":"{"event": "request", "q_len": 21}"}
+agent-1  | INFO:     172.18.0.5:54594 - "POST /ask HTTP/1.1" 200 OK
+nginx-1  | 151.101.192.223 - - [17/Apr/2026:08:54:05 +0000] "POST /ask HTTP/1.1" 200 50 "-" "curl/8.7.1"
+agent-1  | INFO:     127.0.0.1:57180 - "GET /health HTTP/1.1" 200 OK
+```
+
+### Checkpoint 2
+
+- Hiểu cấu trúc Dockerfile
+- Biết lợi ích của multi-stage builds
+- Hiểu Docker Compose orchestration
+- Biết cách debug container (`docker logs`, `docker exec`)
 
 ---
 
 ## Part 3: Cloud Deployment (45 phút)
 
-###  Concepts
+### Concepts
 
 **Vấn đề:** Laptop không thể chạy 24/7, không có public IP.
 
@@ -225,13 +346,15 @@ curl http://localhost/ask -X POST \
 
 **So sánh:**
 
-| Platform | Độ khó | Free tier | Best for |
-|----------|--------|-----------|----------|
-| Railway | ⭐ | $5 credit | Prototypes |
-| Render | ⭐⭐ | 750h/month | Side projects |
-| Cloud Run | ⭐⭐⭐ | 2M requests | Production |
 
-###  Exercise 3.1: Deploy Railway (15 phút)
+| Platform  | Độ khó | Free tier   | Best for      |
+| --------- | ------ | ----------- | ------------- |
+| Railway   | ⭐      | $5 credit   | Prototypes    |
+| Render    | ⭐⭐     | 750h/month  | Side projects |
+| Cloud Run | ⭐⭐⭐    | 2M requests | Production    |
+
+
+### Exercise 3.1: Deploy Railway (15 phút)
 
 ```bash
 cd ../../03-cloud-deployment/railway
@@ -283,7 +406,7 @@ curl http://studen-agent-domain/ask -X POST \
   -d '{"question": ""}'
 ```
 
-###  Exercise 3.2: Deploy Render (15 phút)
+### Exercise 3.2: Deploy Render (15 phút)
 
 ```bash
 cd ../render
@@ -301,7 +424,7 @@ cd ../render
 
 **Nhiệm vụ:** So sánh `render.yaml` với `railway.toml`. Khác nhau gì?
 
-###  Exercise 3.3: (Optional) GCP Cloud Run (15 phút)
+### Exercise 3.3: (Optional) GCP Cloud Run (15 phút)
 
 ```bash
 cd ../production-cloud-run
@@ -311,38 +434,41 @@ cd ../production-cloud-run
 
 **Nhiệm vụ:** Đọc `cloudbuild.yaml` và `service.yaml`. Hiểu CI/CD pipeline.
 
-###  Checkpoint 3
+### Checkpoint 3
 
-- [ ] Deploy thành công lên ít nhất 1 platform
-- [ ] Có public URL hoạt động
-- [ ] Hiểu cách set environment variables trên cloud
-- [ ] Biết cách xem logs
+- Deploy thành công lên ít nhất 1 platform
+- Có public URL hoạt động
+- Hiểu cách set environment variables trên cloud
+- Biết cách xem logs
 
 ---
 
 ## Part 4: API Security (40 phút)
 
-###  Concepts
+### Concepts
 
 **Vấn đề:** Public URL = ai cũng gọi được = hết tiền OpenAI.
 
 **Giải pháp:**
+
 1. **Authentication** — Chỉ user hợp lệ mới gọi được
 2. **Rate Limiting** — Giới hạn số request/phút
 3. **Cost Guard** — Dừng khi vượt budget
 
-###  Exercise 4.1: API Key authentication
+### Exercise 4.1: API Key authentication
 
 ```bash
 cd ../../04-api-gateway/develop
 ```
 
 **Nhiệm vụ:** Đọc `app.py` và tìm:
+
 - API key được check ở đâu?
 - Điều gì xảy ra nếu sai key?
 - Làm sao rotate key?
 
 Test:
+
 ```bash
 python app.py
 
@@ -358,15 +484,17 @@ curl http://localhost:8000/ask -X POST \
   -d '{"question": "Hello"}'
 ```
 
-###  Exercise 4.2: JWT authentication (Advanced)
+### Exercise 4.2: JWT authentication (Advanced)
 
 ```bash
 cd ../production
 ```
 
 **Nhiệm vụ:** 
+
 1. Đọc `auth.py` — hiểu JWT flow
 2. Lấy token:
+
 ```bash
 python app.py
 
@@ -375,7 +503,8 @@ curl http://localhost:8000/token -X POST \
   -d '{"username": "admin", "password": "secret"}'
 ```
 
-3. Dùng token để gọi API:
+1. Dùng token để gọi API:
+
 ```bash
 TOKEN="<token_từ_bước_2>"
 curl http://localhost:8000/ask -X POST \
@@ -384,14 +513,16 @@ curl http://localhost:8000/ask -X POST \
   -d '{"question": "Explain JWT"}'
 ```
 
-###  Exercise 4.3: Rate limiting
+### Exercise 4.3: Rate limiting
 
 **Nhiệm vụ:** Đọc `rate_limiter.py` và trả lời:
+
 - Algorithm nào được dùng? (Token bucket? Sliding window?)
 - Limit là bao nhiêu requests/minute?
 - Làm sao bypass limit cho admin?
 
 Test:
+
 ```bash
 # Gọi liên tục 20 lần
 for i in {1..20}; do
@@ -405,7 +536,7 @@ done
 
 Quan sát response khi hit limit.
 
-###  Exercise 4.4: Cost guard
+### Exercise 4.4: Cost guard
 
 **Nhiệm vụ:** Đọc `cost_guard.py` và implement logic:
 
@@ -423,8 +554,7 @@ def check_budget(user_id: str, estimated_cost: float) -> bool:
     pass
 ```
 
-<details>
-<summary> Solution</summary>
+Solution
 
 ```python
 import redis
@@ -445,30 +575,31 @@ def check_budget(user_id: str, estimated_cost: float) -> bool:
     return True
 ```
 
-</details>
 
-###  Checkpoint 4
 
-- [ ] Implement API key authentication
-- [ ] Hiểu JWT flow
-- [ ] Implement rate limiting
-- [ ] Implement cost guard với Redis
+### Checkpoint 4
+
+- Implement API key authentication
+- Hiểu JWT flow
+- Implement rate limiting
+- Implement cost guard với Redis
 
 ---
 
 ## Part 5: Scaling & Reliability (40 phút)
 
-###  Concepts
+### Concepts
 
 **Vấn đề:** 1 instance không đủ khi có nhiều users.
 
 **Giải pháp:**
+
 1. **Stateless design** — Không lưu state trong memory
 2. **Health checks** — Platform biết khi nào restart
 3. **Graceful shutdown** — Hoàn thành requests trước khi tắt
 4. **Load balancing** — Phân tán traffic
 
-###  Exercise 5.1: Health checks
+### Exercise 5.1: Health checks
 
 ```bash
 cd ../../05-scaling-reliability/develop
@@ -491,8 +622,7 @@ def ready():
     pass
 ```
 
-<details>
-<summary> Solution</summary>
+Solution
 
 ```python
 @app.get("/health")
@@ -514,9 +644,9 @@ def ready():
         )
 ```
 
-</details>
 
-###  Exercise 5.2: Graceful shutdown
+
+### Exercise 5.2: Graceful shutdown
 
 **Nhiệm vụ:** Implement signal handler:
 
@@ -537,6 +667,7 @@ signal.signal(signal.SIGTERM, shutdown_handler)
 ```
 
 Test:
+
 ```bash
 python app.py &
 PID=$!
@@ -552,7 +683,7 @@ kill -TERM $PID
 # Quan sát: Request có hoàn thành không?
 ```
 
-###  Exercise 5.3: Stateless design
+### Exercise 5.3: Stateless design
 
 ```bash
 cd ../production
@@ -561,6 +692,7 @@ cd ../production
 **Nhiệm vụ:** Refactor code để stateless.
 
 **Anti-pattern:**
+
 ```python
 #  State trong memory
 conversation_history = {}
@@ -572,6 +704,7 @@ def ask(user_id: str, question: str):
 ```
 
 **Correct:**
+
 ```python
 #  State trong Redis
 @app.post("/ask")
@@ -582,7 +715,7 @@ def ask(user_id: str, question: str):
 
 Tại sao? Vì khi scale ra nhiều instances, mỗi instance có memory riêng.
 
-###  Exercise 5.4: Load balancing
+### Exercise 5.4: Load balancing
 
 **Nhiệm vụ:** Chạy stack với Nginx load balancer:
 
@@ -591,11 +724,13 @@ docker compose up --scale agent=3
 ```
 
 Quan sát:
+
 - 3 agent instances được start
 - Nginx phân tán requests
 - Nếu 1 instance die, traffic chuyển sang instances khác
 
 Test:
+
 ```bash
 # Gọi 10 requests
 for i in {1..10}; do
@@ -608,53 +743,56 @@ done
 docker compose logs agent
 ```
 
-###  Exercise 5.5: Test stateless
+### Exercise 5.5: Test stateless
 
 ```bash
 python test_stateless.py
 ```
 
 Script này:
+
 1. Gọi API để tạo conversation
 2. Kill random instance
 3. Gọi tiếp — conversation vẫn còn không?
 
-###  Checkpoint 5
+### Checkpoint 5
 
-- [ ] Implement health và readiness checks
-- [ ] Implement graceful shutdown
-- [ ] Refactor code thành stateless
-- [ ] Hiểu load balancing với Nginx
-- [ ] Test stateless design
+- Implement health và readiness checks
+- Implement graceful shutdown
+- Refactor code thành stateless
+- Hiểu load balancing với Nginx
+- Test stateless design
 
 ---
 
 ## Part 6: Final Project (60 phút)
 
-###  Objective
+### Objective
 
 Build một production-ready AI agent từ đầu, kết hợp TẤT CẢ concepts đã học.
 
-###  Requirements
+### Requirements
 
 **Functional:**
-- [ ] Agent trả lời câu hỏi qua REST API
-- [ ] Support conversation history
-- [ ] Streaming responses (optional)
+
+- Agent trả lời câu hỏi qua REST API
+- Support conversation history
+- Streaming responses (optional)
 
 **Non-functional:**
-- [ ] Dockerized với multi-stage build
-- [ ] Config từ environment variables
-- [ ] API key authentication
-- [ ] Rate limiting (10 req/min per user)
-- [ ] Cost guard ($10/month per user)
-- [ ] Health check endpoint
-- [ ] Readiness check endpoint
-- [ ] Graceful shutdown
-- [ ] Stateless design (state trong Redis)
-- [ ] Structured JSON logging
-- [ ] Deploy lên Railway hoặc Render
-- [ ] Public URL hoạt động
+
+- Dockerized với multi-stage build
+- Config từ environment variables
+- API key authentication
+- Rate limiting (10 req/min per user)
+- Cost guard ($10/month per user)
+- Health check endpoint
+- Readiness check endpoint
+- Graceful shutdown
+- Stateless design (state trong Redis)
+- Structured JSON logging
+- Deploy lên Railway hoặc Render
+- Public URL hoạt động
 
 ### 🏗 Architecture
 
@@ -682,7 +820,7 @@ Build một production-ready AI agent từ đầu, kết hợp TẤT CẢ concep
            └──────────┘
 ```
 
-###  Step-by-step
+### Step-by-step
 
 #### Step 1: Project setup (5 phút)
 
@@ -847,7 +985,7 @@ railway up
 # Push lên GitHub → Connect Render → Deploy
 ```
 
-###  Validation
+### Validation
 
 Chạy script kiểm tra:
 
@@ -857,42 +995,46 @@ python check_production_ready.py
 ```
 
 Script sẽ kiểm tra:
--  Dockerfile exists và valid
--  Multi-stage build
--  .dockerignore exists
--  Health endpoint returns 200
--  Readiness endpoint returns 200
--  Auth required (401 without key)
--  Rate limiting works (429 after limit)
--  Cost guard works (402 when exceeded)
--  Graceful shutdown (SIGTERM handled)
--  Stateless (state trong Redis, không trong memory)
--  Structured logging (JSON format)
 
-###  Grading Rubric
+- Dockerfile exists và valid
+- Multi-stage build
+- .dockerignore exists
+- Health endpoint returns 200
+- Readiness endpoint returns 200
+- Auth required (401 without key)
+- Rate limiting works (429 after limit)
+- Cost guard works (402 when exceeded)
+- Graceful shutdown (SIGTERM handled)
+- Stateless (state trong Redis, không trong memory)
+- Structured logging (JSON format)
 
-| Criteria | Points | Description |
-|----------|--------|-------------|
-| **Functionality** | 20 | Agent hoạt động đúng |
-| **Docker** | 15 | Multi-stage, optimized |
-| **Security** | 20 | Auth + rate limit + cost guard |
-| **Reliability** | 20 | Health checks + graceful shutdown |
-| **Scalability** | 15 | Stateless + load balanced |
-| **Deployment** | 10 | Public URL hoạt động |
-| **Total** | 100 | |
+### Grading Rubric
+
+
+| Criteria          | Points | Description                       |
+| ----------------- | ------ | --------------------------------- |
+| **Functionality** | 20     | Agent hoạt động đúng              |
+| **Docker**        | 15     | Multi-stage, optimized            |
+| **Security**      | 20     | Auth + rate limit + cost guard    |
+| **Reliability**   | 20     | Health checks + graceful shutdown |
+| **Scalability**   | 15     | Stateless + load balanced         |
+| **Deployment**    | 10     | Public URL hoạt động              |
+| **Total**         | 100    |                                   |
+
 
 ---
 
-##  Hoàn Thành!
+## Hoàn Thành!
 
 Bạn đã:
--  Hiểu sự khác biệt dev vs production
--  Containerize app với Docker
--  Deploy lên cloud platform
--  Bảo mật API
--  Thiết kế hệ thống scalable và reliable
 
-###  Next Steps
+- Hiểu sự khác biệt dev vs production
+- Containerize app với Docker
+- Deploy lên cloud platform
+- Bảo mật API
+- Thiết kế hệ thống scalable và reliable
+
+### Next Steps
 
 1. **Monitoring:** Thêm Prometheus + Grafana
 2. **CI/CD:** GitHub Actions auto-deploy
@@ -900,7 +1042,7 @@ Bạn đã:
 4. **Observability:** Distributed tracing với OpenTelemetry
 5. **Cost optimization:** Spot instances, auto-scaling
 
-###  Resources
+### Resources
 
 - [12-Factor App](https://12factor.net/)
 - [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
@@ -910,7 +1052,7 @@ Bạn đã:
 
 ---
 
-##  Q&A
+## Q&A
 
 **Q: Tôi không có credit card, có thể deploy không?**  
 A: Có! Railway cho $5 credit, Render có 750h free tier.
