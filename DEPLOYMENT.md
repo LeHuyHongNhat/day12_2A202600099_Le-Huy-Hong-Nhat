@@ -14,7 +14,7 @@ Render (Blueprint Deployment)
 ### 1. Health Check
 ```bash
 curl https://hospital-chatbot-api.onrender.com/health
-# Expected: {"status": "ok", "environment": "production"}
+# Expected: {"status":"healthy"}
 ```
 
 ### 2. Readiness Check
@@ -28,7 +28,7 @@ curl https://hospital-chatbot-api.onrender.com/ready
 curl -X POST https://hospital-chatbot-api.onrender.com/hospital-rag-agent \
   -H "X-API-Key: secret-key-123" \
   -H "Content-Type: application/json" \
-  -d '{"question": "Xin chào, bệnh viện có chuyên khoa nội không?", "session_id": "test-session-123"}'
+  -d '{"text": "Xin chào, bệnh viện có chuyên khoa nội không?", "session_id": "test-session-123"}'
 ```
 
 ## Environment Variables Set (Render)

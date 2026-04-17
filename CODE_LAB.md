@@ -813,6 +813,43 @@ Tại sao? Vì khi scale ra nhiều instances, mỗi instance có memory riêng.
 docker compose up --scale agent=3
 ```
 
+```
++] Building 63.5s (12/12) FINISHED                  
+ => [internal] load local bake definitions      0.0s
+ => => reading from stdin 642B                  0.0s
+ => [internal] load build definition from Dock  0.0s
+ => => transferring dockerfile: 234B            0.0s
+ => [internal] load metadata for docker.io/lib  8.5s
+ => [auth] library/python:pull token for regis  0.0s
+ => [internal] load .dockerignore               0.0s
+ => => transferring context: 2B                 0.0s
+ => [1/4] FROM docker.io/library/python:3.11-s  0.0s
+ => => resolve docker.io/library/python:3.11-s  0.0s
+ => [internal] load build context               0.0s
+ => => transferring context: 14.75kB            0.0s
+ => CACHED [2/4] WORKDIR /app                   0.0s
+ => [3/4] RUN pip install --no-cache-dir fast  54.1s
+ => [4/4] COPY . .                              0.0s 
+ => exporting to image                          0.7s 
+ => => exporting layers                         0.5s 
+ => => exporting manifest sha256:f4f61ad808cfb  0.0s 
+ => => exporting config sha256:a6ea5320438bd91  0.0s 
+ => => exporting attestation manifest sha256:2  0.0s 
+ => => exporting manifest list sha256:65e91709  0.0s
+ => => naming to docker.io/library/production-  0.0s
+ => => unpacking to docker.io/library/producti  0.1s
+ => resolving provenance for metadata file      0.0s
+WARN[0063] Found orphan containers ([production-qdrant-1]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up. 
+[+] up 7/7
+ ✔ Image production-agent       Built           63.5s
+ ✔ Network production_agent_net Created         0.0s
+ ✔ Container production-redis-1 Healthy         10.7s
+ ✔ Container production-agent-3 Started         10.9s
+ ✔ Container production-agent-1 Started         10.8s
+ ✔ Container production-agent-2 Started         10.8s
+ ✔ Container production-nginx-1 Started         10.9s
+ ```
+
 Quan sát:
 
 - 3 agent instances được start
@@ -833,10 +870,108 @@ done
 docker compose logs agent
 ```
 
+```
+# Check logs — requests được phân tán
+docker compose logs agent
+zsh: command not found: #
+curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
+curl: (7) Failed to connect to localhost port 80 after 0 ms: Couldn't connect to server
+zsh: command not found: #
+agent-3  | INFO:     Started server process [1]
+agent-3  | INFO:     Waiting for application startup.
+agent-3  | INFO:app:Starting instance agent-production
+agent-3  | INFO:app:Storage: Redis ✅
+agent-3  | INFO:     Application startup complete.
+agent-3  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+agent-3  | ✅ Connected to Redis
+agent-3  | INFO:     127.0.0.1:51588 - "GET /health HTTP/1.1" 200 OK
+agent-3  | INFO:     172.19.0.6:40668 - "POST /chat HTTP/1.1" 200 OK
+agent-3  | INFO:     172.19.0.6:40668 - "POST /chat HTTP/1.1" 200 OK
+agent-3  | INFO:     127.0.0.1:60446 - "GET /health HTTP/1.1" 200 OK
+agent-2  | INFO:     Started server process [1]
+agent-2  | INFO:     Waiting for application startup.
+agent-2  | INFO:app:Starting instance agent-production
+agent-2  | INFO:app:Storage: Redis ✅
+agent-2  | INFO:     Application startup complete.
+agent-1  | INFO:     Started server process [1]
+agent-1  | INFO:     Waiting for application startup.
+agent-1  | INFO:app:Starting instance agent-production
+agent-1  | INFO:app:Storage: Redis ✅
+agent-1  | INFO:     Application startup complete.
+agent-1  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+agent-1  | ✅ Connected to Redis
+agent-1  | INFO:     127.0.0.1:51566 - "GET /health HTTP/1.1" 200 OK
+agent-2  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+agent-2  | ✅ Connected to Redis
+agent-2  | INFO:     127.0.0.1:51582 - "GET /health HTTP/1.1" 200 OK
+agent-2  | INFO:     172.19.0.6:60810 - "POST /chat HTTP/1.1" 200 OK
+agent-2  | INFO:     172.19.0.6:60810 - "POST /chat HTTP/1.1" 200 OK
+agent-2  | INFO:     127.0.0.1:60434 - "GET /health HTTP/1.1" 200 OK
+agent-1  | INFO:     172.19.0.6:50952 - "POST /chat HTTP/1.1" 200 OK
+agent-1  | INFO:     172.19.0.6:50952 - "GET /chat/f18c27ea-6206-48ac-9640-33173d8b9455/history HTTP/1.1" 200 OK
+agent-1  | INFO:     127.0.0.1:60426 - "GET /health HTTP/1.1" 200 OK
+```
+
 ### Exercise 5.5: Test stateless
 
 ```bash
 python test_stateless.py
+```
+
+```
+============================================================
+Stateless Scaling Demo
+============================================================
+
+Session ID: f18c27ea-6206-48ac-9640-33173d8b9455
+
+Request 1: [agent-production]
+  Q: What is Docker?
+  A: Container là cách đóng gói app để chạy ở mọi nơi. Build once, run anywhere!...
+
+Request 2: [agent-production]
+  Q: Why do we need containers?
+  A: Agent đang hoạt động tốt! (mock response) Hỏi thêm câu hỏi đi nhé....
+
+Request 3: [agent-production]
+  Q: What is Kubernetes?
+  A: Đây là câu trả lời từ AI agent (mock). Trong production, đây sẽ là response từ O...
+
+Request 4: [agent-production]
+  Q: How does load balancing work?
+  A: Agent đang hoạt động tốt! (mock response) Hỏi thêm câu hỏi đi nhé....
+
+Request 5: [agent-production]
+  Q: What is Redis used for?
+  A: Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã được nhận....
+
+------------------------------------------------------------
+Total requests: 5
+Instances used: {'agent-production'}
+ℹ️  Only 1 instance (scale up với: docker compose up --scale agent=3)
+
+--- Conversation History ---
+Total messages: 10
+  [user]: What is Docker?...
+  [assistant]: Container là cách đóng gói app để chạy ở mọi nơi. Build once...
+  [user]: Why do we need containers?...
+  [assistant]: Agent đang hoạt động tốt! (mock response) Hỏi thêm câu hỏi đ...
+  [user]: What is Kubernetes?...
+  [assistant]: Đây là câu trả lời từ AI agent (mock). Trong production, đây...
+  [user]: How does load balancing work?...
+  [assistant]: Agent đang hoạt động tốt! (mock response) Hỏi thêm câu hỏi đ...
+  [user]: What is Redis used for?...
+  [assistant]: Tôi là AI agent được deploy lên cloud. Câu hỏi của bạn đã đư...
+
+✅ Session history preserved across all instances via Redis!
 ```
 
 Script này:
@@ -941,14 +1076,14 @@ touch .dockerignore
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    # TODO: Define all config
-    # - PORT
-    # - REDIS_URL
-    # - AGENT_API_KEY
-    # - LOG_LEVEL
-    # - RATE_LIMIT_PER_MINUTE
-    # - MONTHLY_BUDGET_USD
-    pass
+    PORT: int = 8000
+    REDIS_URL: str = "redis://redis:6379/0"
+    AGENT_API_KEY: str = "secret-key-123"
+    OPENAI_API_KEY: str = ""
+    LOG_LEVEL: str = "INFO"
+    RATE_LIMIT_PER_MINUTE: int = 10
+    MONTHLY_BUDGET_USD: float = 10.0
+    ENVIRONMENT: str = "production"
 
 settings = Settings()
 ```
@@ -968,13 +1103,17 @@ app = FastAPI()
 
 @app.get("/health")
 def health():
-    # TODO
-    pass
+    return {"status": "ok", "env": settings.ENVIRONMENT}
 
 @app.get("/ready")
 def ready():
-    # TODO: Check Redis connection
-    pass
+    # Kiểm tra kết nối Redis thực tế
+    from .rate_limiter import r
+    try:
+        r.ping()
+        return {"status": "ready"}
+    except:
+        raise HTTPException(status_code=503, detail="Redis not reachable")
 
 @app.post("/ask")
 def ask(
@@ -983,12 +1122,16 @@ def ask(
     _rate_limit: None = Depends(check_rate_limit),
     _budget: None = Depends(check_budget)
 ):
-    # TODO: 
-    # 1. Get conversation history from Redis
-    # 2. Call LLM
-    # 3. Save to Redis
-    # 4. Return response
-    pass
+    # Logic: 
+    # 1. Gọi LLM
+    from utils.mock_llm import ask as ask_llm
+    answer = ask_llm(question)
+    
+    # 2. Ghi nhận chi phí
+    from .cost_guard import record_usage
+    record_usage(user_id, 0.01)
+    
+    return {"answer": answer, "user_id": user_id}
 ```
 
 #### Step 4: Authentication (5 phút)
@@ -999,10 +1142,9 @@ def ask(
 from fastapi import Header, HTTPException
 
 def verify_api_key(x_api_key: str = Header(...)):
-    # TODO: Verify against settings.AGENT_API_KEY
-    # Return user_id if valid
-    # Raise HTTPException(401) if invalid
-    pass
+    if x_api_key != settings.AGENT_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+    return "user_123"
 ```
 
 #### Step 5: Rate limiting (10 phút)
@@ -1016,9 +1158,14 @@ from fastapi import HTTPException
 r = redis.from_url(settings.REDIS_URL)
 
 def check_rate_limit(user_id: str):
-    # TODO: Implement sliding window
-    # Raise HTTPException(429) if exceeded
-    pass
+    import time
+    now = time.time()
+    key = f"rate_limit:{user_id}"
+    r.zremrangebyscore(key, 0, now - 60)
+    if r.zcard(key) >= settings.RATE_LIMIT_PER_MINUTE:
+        raise HTTPException(status_code=429, detail="Too many requests")
+    r.zadd(key, {str(now): now})
+    r.expire(key, 60)
 ```
 
 #### Step 6: Cost guard (10 phút)
@@ -1027,26 +1174,57 @@ def check_rate_limit(user_id: str):
 
 ```python
 def check_budget(user_id: str):
-    # TODO: Check monthly spending
-    # Raise HTTPException(402) if exceeded
-    pass
+    from datetime import datetime
+    month_key = datetime.now().strftime("%Y-%m")
+    current = float(r.get(f"budget:{user_id}:{month_key}") or 0)
+    if current >= settings.MONTHLY_BUDGET_USD:
+        raise HTTPException(status_code=402, detail="Budget exceeded")
 ```
 
 #### Step 7: Dockerfile (5 phút)
 
 ```dockerfile
-# TODO: Multi-stage build
 # Stage 1: Builder
+FROM python:3.11-slim AS builder
+WORKDIR /build
+COPY requirements.txt .
+RUN pip install --user --no-cache-dir -r requirements.txt
+
 # Stage 2: Runtime
+FROM python:3.11-slim
+WORKDIR /app
+COPY --from=builder /root/.local /root/.local
+COPY . .
+ENV PATH=/root/.local/bin:$PATH
+ENV PYTHONPATH=/app
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 #### Step 8: Docker Compose (5 phút)
 
 ```yaml
-# TODO: Define services
-# - agent (scale to 3)
-# - redis
-# - nginx (load balancer)
+services:
+  agent:
+    build: .
+    deploy:
+      replicas: 3
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
 ```
 
 #### Step 9: Test locally (5 phút)
