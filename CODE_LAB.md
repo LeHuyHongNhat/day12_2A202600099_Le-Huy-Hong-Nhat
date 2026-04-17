@@ -688,41 +688,22 @@ cd ../../05-scaling-reliability/develop
 ```python
 @app.get("/health")
 def health():
-    """Liveness probe — container còn sống không?"""
-    # TODO: Return 200 nếu process OK
-    pass
-
-@app.get("/ready")
-def ready():
-    """Readiness probe — sẵn sàng nhận traffic không?"""
-    # TODO: Check database connection, Redis, etc.
-    # Return 200 nếu OK, 503 nếu chưa ready
-    pass
-```
-
-Solution
-
-```python
-@app.get("/health")
-def health():
     return {"status": "ok"}
 
 @app.get("/ready")
 def ready():
     try:
-        # Check Redis
-        r.ping()
-        # Check database
-        db.execute("SELECT 1")
+        # Check Redis (giả lập)
+        # r.ping() 
+        # Check database (giả lập)
+        # db.execute("SELECT 1")
         return {"status": "ready"}
-    except:
+    except Exception as e:
         return JSONResponse(
             status_code=503,
-            content={"status": "not ready"}
+            content={"status": "not ready", "detail": str(e)}
         )
 ```
-
-
 
 ### Exercise 5.2: Graceful shutdown
 
@@ -731,17 +712,18 @@ def ready():
 ```python
 import signal
 import sys
+import time
 
 def shutdown_handler(signum, frame):
     """Handle SIGTERM from container orchestrator"""
-    # TODO:
-    # 1. Stop accepting new requests
-    # 2. Finish current requests
-    # 3. Close connections
-    # 4. Exit
-    pass
+    print(f"Received signal {signum}. Closing connections...")
+    # Giả lập chờ request hoàn thành
+    time.sleep(2) 
+    print("Graceful shutdown complete.")
+    sys.exit(0)
 
 signal.signal(signal.SIGTERM, shutdown_handler)
+signal.signal(signal.SIGINT, shutdown_handler) # Hỗ trợ cả Ctrl+C
 ```
 
 Test:
@@ -760,6 +742,32 @@ kill -TERM $PID
 
 # Quan sát: Request có hoàn thành không?
 ```
+
+```
+python app.py & PID=$!; sleep 2; curl -s -X POST "http://localhost:8000/ask?question=LongTask" & sleep 1; kill -TERM $PID; wait $PID
+
+[1] 51440
+2026-04-17 17:14:15,495 INFO Starting agent on port 8000
+INFO:     Started server process [51440]
+INFO:     Waiting for application startup.
+2026-04-17 17:14:15,511 INFO Agent starting up...
+2026-04-17 17:14:15,511 INFO Loading model and checking dependencies...
+2026-04-17 17:14:15,711 INFO ✅ Agent is ready!
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+[2] 51445
+INFO:     127.0.0.1:56934 - "POST /ask?question=LongTask HTTP/1.1" 200 OK
+{"answer":"Đây là câu trả lời từ AI agent (mock). Trong production, đây sẽ là response từ OpenAI/Anthropic."}[2]  + done       curl -s -X POST "http://localhost:8000/ask?question=LongTask"
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-04-17 17:14:18,452 INFO 🔄 Graceful shutdown initiated...
+2026-04-17 17:14:18,452 INFO ✅ Shutdown complete
+INFO:     Application shutdown complete.
+INFO:     Finished server process [51440]
+2026-04-17 17:14:18,452 INFO Received signal 15 — uvicorn will handle graceful shutdown
+[1]  + done       python app.py
+```
+
 
 ### Exercise 5.3: Stateless design
 
@@ -792,6 +800,10 @@ def ask(user_id: str, question: str):
 ```
 
 Tại sao? Vì khi scale ra nhiều instances, mỗi instance có memory riêng.
+
+1. Vấn đề bộ nhớ (Isolation): Khi scale ra nhiều instance (ví dụ 3 server chạy AI Agent), mỗi instance có một vùng nhớ (RAM) riêng biệt.
+2. Lỗi mất dữ liệu (Consistency): Nếu request 1 của bạn rơi vào Server A (lưu history vào RAM A), nhưng request 2 lại rơi vào Server B (do Load Balancer phân phối), thì Server B sẽ không biết gì về lịch sử trò chuyện trước đó.
+3. Giải pháp (Shared State): Chuyển toàn bộ "trạng thái" (state/history) sang một database dùng chung như Redis. Lúc này, dù request rơi vào bất kỳ server nào, chúng đều có thể đọc/ghi dữ liệu từ Redis một cách nhất quán.
 
 ### Exercise 5.4: Load balancing
 
