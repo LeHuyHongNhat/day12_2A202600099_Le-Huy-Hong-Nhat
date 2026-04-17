@@ -474,9 +474,14 @@ cd ../../04-api-gateway/develop
 
 **Nhiệm vụ:** Đọc `app.py` và tìm:
 
-- API key được check ở đâu?
-- Điều gì xảy ra nếu sai key?
-- Làm sao rotate key?
+- **API key được check ở đâu?**
+    - Key được kiểm tra trong hàm `verify_api_key` (dòng 39), hàm này được sử dụng như một `Depends` (dependency injection) trong endpoint `@app.post("/ask")`.
+    - Nó lấy giá trị từ HTTP Header có tên là `X-API-Key`.
+- **Điều gì xảy ra nếu sai key?**
+    - Nếu thiếu key: Trả về lỗi `401 Unauthorized`.
+    - Nếu sai key: Trả về lỗi `403 Forbidden` với thông báo "Invalid API key.".
+- **Làm sao rotate key?**
+    - Vì key được đọc từ biến môi trường `os.getenv("AGENT_API_KEY")`, ta chỉ cần thay đổi giá trị biến `AGENT_API_KEY` trong môi trường (OS, Docker Compose, hoặc Cloud Dashboard như Render/Railway) và khởi động lại service.
 
 Test:
 
